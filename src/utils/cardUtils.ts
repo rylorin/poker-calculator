@@ -73,6 +73,17 @@ export const calculateEquity = (
   communityCards: { flop: (Card | null)[]; turn: Card | null; river: Card | null },
   iterations: number = 10000
 ): Player[] => {
+  // Return default values if we don't have at least 2 players with cards
+  const playersWithCards = players.filter(p => p.hand.length >= 2);
+  if (playersWithCards.length < 2) {
+    return players.map(player => ({
+      ...player,
+      equity: 0,
+      winPercentage: 0,
+      tiePercentage: 0
+    }));
+  }
+
   const calculator = new PokerCalculator();
   
   // Add player hands
@@ -105,6 +116,14 @@ export const calculateEquity = (
   
   // Update player equity values
   return players.map((player, index) => {
+    if (player.hand.length < 2) {
+      return {
+        ...player,
+        equity: 0,
+        winPercentage: 0,
+        tiePercentage: 0
+      };
+    }
     const result = results.getPlayers()[index];
     return {
       ...player,
