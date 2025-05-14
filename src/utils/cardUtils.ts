@@ -1,5 +1,6 @@
 import { Card, Rank, Suit, HandType, Player } from '../types';
-import { PokerCalculator, Card as PokerCalcCard } from 'poker-odds-calc';
+import { TexasHoldem } from 'poker-odds-calc';
+import type { IHand } from 'poker-odds-calc/dts/lib/Interfaces';
 
 export const RANKS: Rank[] = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
 export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
@@ -55,7 +56,7 @@ export const isCardInUse = (
   return inFlop || inTurn || inRiver;
 };
 
-const convertToPokerCalcCard = (card: Card): PokerCalcCard => {
+const convertToPokerCalcCard = (card: Card): string => {
   const suitMap: Record<Suit, string> = {
     'spades': 's',
     'hearts': 'h',
@@ -63,7 +64,7 @@ const convertToPokerCalcCard = (card: Card): PokerCalcCard => {
     'clubs': 'c'
   };
   
-  return `${card.rank}${suitMap[card.suit]}` as PokerCalcCard;
+  return `${card.rank}${suitMap[card.suit]}`;
 };
 
 // Calculate equity using poker-odds-calc library
@@ -72,7 +73,7 @@ export const calculateEquity = (
   communityCards: { flop: (Card | null)[]; turn: Card | null; river: Card | null },
   iterations: number = 10000
 ): Player[] => {
-  const calculator = new PokerCalculator();
+  const calculator = new TexasHoldem();
   
   // Add player hands
   players.forEach(player => {
@@ -80,8 +81,8 @@ export const calculateEquity = (
       const cards = player.hand
         .filter((card): card is Card => card !== null)
         .map(convertToPokerCalcCard);
-      if (cards.length > 0) {
-        calculator.addPlayer(cards);
+      if (cards.length === 2) {
+        calculator.addPlayer(cards as IHand);
       }
     }
   });
@@ -103,10 +104,13 @@ export const calculateEquity = (
   const results = calculator.calculate();
   
   // Update player equity values
-  return players.map((player, index) => ({
-    ...player,
-    equity: Number(results[index].equity.toFixed(2)),
-    winPercentage: Number(results[index].wins.toFixed(2)),
-    tiePercentage: Number(results[index].ties.toFixed(2))
-  }));
+  return players.map((player, index) => {
+    const result = results.getPlayers()[index];
+    return {
+      ...player,
+      equity: Number(result.getWinsPercentage().toFixed(2)),
+      winPercentage: Number(result.getWinsPercentage().toFixed(2)),
+      tiePercentage: Number(result.getTiesPercentage().toFixed(2))
+    };
+  });
 };
