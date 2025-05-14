@@ -10,8 +10,8 @@ import { calculateEquity, isCardInUse } from './utils/cardUtils';
 function App() {
   const [gameVariant, setGameVariant] = useState<GameVariant>('texas-holdem');
   const [players, setPlayers] = useState<Player[]>([
-    { id: 1, hand: [], equity: 50, winPercentage: 47.97, tiePercentage: 4.07 },
-    { id: 2, hand: [], equity: 50, winPercentage: 47.97, tiePercentage: 4.07 }
+    { id: 1, hand: [], equity: 0, winPercentage: 0, tiePercentage: 0 },
+    { id: 2, hand: [], equity: 0, winPercentage: 0, tiePercentage: 0 }
   ]);
   
   const [communityCards, setCommunityCards] = useState<{
@@ -136,7 +136,7 @@ function App() {
       prev.map(player => ({
         ...player,
         hand: [],
-        equity: 50,
+        equity: 0,
         winPercentage: 0,
         tiePercentage: 0
       }))
@@ -167,7 +167,7 @@ function App() {
   // Auto-run calculation when cards change
   useEffect(() => {
     handleRunCalculation();
-  }, []);
+  }, [players, communityCards]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">
