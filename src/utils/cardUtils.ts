@@ -1,5 +1,5 @@
 import { Card, Rank, Suit, HandType, Player } from '../types';
-import { TexasHoldem } from 'poker-odds-calc';
+import { PokerCalculator } from 'poker-odds-calc';
 import type { IHand } from 'poker-odds-calc/dts/lib/Interfaces';
 
 export const RANKS: Rank[] = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
@@ -73,7 +73,7 @@ export const calculateEquity = (
   communityCards: { flop: (Card | null)[]; turn: Card | null; river: Card | null },
   iterations: number = 10000
 ): Player[] => {
-  const calculator = new TexasHoldem();
+  const calculator = new PokerCalculator();
   
   // Add player hands
   players.forEach(player => {
