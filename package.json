@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "build:modules": "cd ./node_modules/@stoqey/ib && yarn install && yarn build",
     "build:no-modules": "true",
-    "postinstall": "patch-package && yarn build:no-modules"
+    "no-postinstall": "patch-package && yarn build:no-modules"
   },
   "dependencies": {
     "poker-odds-calc": "^0.0.14",
