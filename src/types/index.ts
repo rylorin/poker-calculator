@@ -1,4 +1,4 @@
-export type Suit = 'spades' | 'hearts' | 'diamonds' | 'clubs';
+export type Suit = 'spades' | 'hearts' | 'clubs' | 'diamonds';
 export type Rank = 'A' | 'K' | 'Q' | 'J' | '10' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2';
 export type Card = {
   rank: Rank;
@@ -22,7 +22,7 @@ export type GameVariant = 'texas-holdem' | 'omaha-high' | 'omaha-hi-lo';
 
 export type Player = {
   id: number;
-  hand: Card[];
+  hand: (Card|null)[];
   equity: number;
   winPercentage: number;
   tiePercentage: number;

@@ -1,9 +1,9 @@
 import { Card, Rank, Suit, HandType, Player } from '../types';
-import { PokerCalculator } from 'poker-odds-calc';
+import { TexasHoldem, SixPlusHoldem, Omaha} from 'poker-odds-calc';
 import type { IHand } from 'poker-odds-calc/dts/lib/Interfaces';
 
 export const RANKS: Rank[] = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
-export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
+export const SUITS: Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
 
 export const createDeck = (): Card[] => {
   const deck: Card[] = [];
@@ -78,13 +78,13 @@ export const calculateEquity = (
   if (playersWithCards.length < 2) {
     return players.map(player => ({
       ...player,
-      equity: 0,
+      equity: 100/players.length,
       winPercentage: 0,
       tiePercentage: 0
     }));
   }
 
-  const calculator = new PokerCalculator();
+  const calculator = new TexasHoldem();
   
   // Add player hands
   players.forEach(player => {
@@ -116,20 +116,10 @@ export const calculateEquity = (
   
   // Update player equity values
   return players.map((player, index) => {
-    if (player.hand.length < 2) {
-      return {
-        ...player,
-        equity: 0,
-        winPercentage: 0,
-        tiePercentage: 0
-      };
-    }
     const result = results.getPlayers()[index];
-    return {
-      ...player,
-      equity: Number(result.getWinsPercentage().toFixed(2)),
-      winPercentage: Number(result.getWinsPercentage().toFixed(2)),
-      tiePercentage: Number(result.getTiesPercentage().toFixed(2))
-    };
+    player.equity = Number(result.getWinsPercentage().toFixed(2))
+    player.winPercentage=Number(result.getWinsPercentage().toFixed(2))
+    player.tiePercentage=Number(result.getTiesPercentage().toFixed(2))
+    return player;
   });
 };

@@ -75,7 +75,7 @@ function App() {
     setPlayers(prev => 
       prev.map(player => {
         if (player.id === playerId) {
-          const newHand = [...player.hand];
+          const newHand:(Card|null)[] = [...player.hand];
           while (newHand.length <= index) {
             newHand.push(null);
           }
@@ -157,10 +157,14 @@ function App() {
     const isExact = unknownCards <= 4; // Arbitrary threshold for exact calculation
     const simulationCount = isExact ? undefined : 10000;
     
+    try {
     // Updated players with new equity calculations
     const updatedPlayers = calculateEquity(players, communityCards, simulationCount);
+    } catch (e) {
+      console.error(e)
+    }
     
-    setPlayers(updatedPlayers);
+    // setPlayers(updatedPlayers);
     setCalculationResult({ isExact, simulationCount });
   };
 
