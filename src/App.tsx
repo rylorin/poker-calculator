@@ -8,12 +8,16 @@ import { Card, GameVariant, Player } from './types';
 import { calculateEquity, isCardInUse } from './utils/cardUtils';
 
 function App() {
+  // Game state management
   const [gameVariant, setGameVariant] = useState<GameVariant>('texas-holdem');
+  
+  // Initialize with two players, each having empty hands and zero equity
   const [players, setPlayers] = useState<Player[]>([
     { id: 1, hand: [], equity: 0, winPercentage: 0, tiePercentage: 0 },
     { id: 2, hand: [], equity: 0, winPercentage: 0, tiePercentage: 0 }
   ]);
   
+  // Track community cards state (flop, turn, river)
   const [communityCards, setCommunityCards] = useState<{
     flop: [Card | null, Card | null, Card | null];
     turn: Card | null;
@@ -24,6 +28,7 @@ function App() {
     river: null
   });
   
+  // Track calculation method and results
   const [calculationResult, setCalculationResult] = useState<{
     isExact: boolean;
     simulationCount?: number;
@@ -31,28 +36,33 @@ function App() {
     isExact: true
   });
 
-  // Get all cards in use for checking availability
+  /**
+   * Collects all cards currently in use (player hands + community cards)
+   * Used to prevent duplicate card selection
+   */
   const getAllCardsInUse = (): Card[] => {
     const cards: Card[] = [];
     
-    // Add player cards
+    // Add all cards from player hands
     players.forEach(player => {
       player.hand.forEach(card => {
         if (card) cards.push(card);
       });
     });
     
-    // Add community cards
+    // Add all community cards
     communityCards.flop.forEach(card => {
       if (card) cards.push(card);
     });
-    
     if (communityCards.turn) cards.push(communityCards.turn);
     if (communityCards.river) cards.push(communityCards.river);
     
     return cards;
   };
 
+  /**
+   * Updates community cards when a card is selected or removed
+   */
   const handleUpdateCommunityCards = (
     section: 'flop' | 'turn' | 'river',
     index: number,
@@ -71,6 +81,9 @@ function App() {
     });
   };
 
+  /**
+   * Updates a player's hand when a card is selected or removed
+   */
   const handleUpdatePlayerHand = (playerId: number, index: number, card: Card | null) => {
     setPlayers(prev => 
       prev.map(player => {
@@ -87,6 +100,9 @@ function App() {
     );
   };
 
+  /**
+   * Adds a new player to the game (max 10 players)
+   */
   const handleAddPlayer = () => {
     if (players.length < 10) {
       const newPlayerId = Math.max(0, ...players.map(p => p.id)) + 1;
@@ -100,16 +116,22 @@ function App() {
     }
   };
 
+  /**
+   * Removes a player from the game (minimum 2 players required)
+   */
   const handleRemovePlayer = (playerId: number) => {
     if (players.length > 2) {
       setPlayers(players.filter(player => player.id !== playerId));
     }
   };
 
+  /**
+   * Changes the game variant and resets hands if switching between Hold'em and Omaha
+   */
   const handleChangeGameVariant = (variant: GameVariant) => {
     setGameVariant(variant);
     
-    // Reset player hands if switching between Hold'em and Omaha
+    // Reset hands when switching between Hold'em and Omaha due to different hand sizes
     if (
       (gameVariant.startsWith('texas') && variant.startsWith('omaha')) ||
       (gameVariant.startsWith('omaha') && variant.startsWith('texas'))
@@ -123,6 +145,9 @@ function App() {
     }
   };
 
+  /**
+   * Resets the game state while maintaining player count
+   */
   const handleClear = () => {
     // Reset community cards
     setCommunityCards({
@@ -131,7 +156,7 @@ function App() {
       river: null
     });
     
-    // Reset all player hands but keep the players
+    // Reset player hands but keep players
     setPlayers(prev => 
       prev.map(player => ({
         ...player,
@@ -148,27 +173,30 @@ function App() {
     });
   };
 
+  /**
+   * Calculates equity for all players based on current cards
+   */
   const handleRunCalculation = () => {
-    // Count filled cards to determine if we can use exact calculation
+    // Determine if we can use exact calculation based on number of unknown cards
     const filledCards = getAllCardsInUse().length;
     const totalCards = 52;
     const unknownCards = totalCards - filledCards;
     
-    const isExact = unknownCards <= 4; // Arbitrary threshold for exact calculation
+    const isExact = unknownCards <= 4; // Use exact calculation if 4 or fewer cards unknown
     const simulationCount = isExact ? undefined : 10000;
     
     try {
-    // Updated players with new equity calculations
-    const updatedPlayers = calculateEquity(players, communityCards, simulationCount);
+      // Calculate equity for all players
+      const updatedPlayers = calculateEquity(players, communityCards, simulationCount);
+      setPlayers(updatedPlayers);
     } catch (e) {
-      console.error(e)
+      console.error('Error calculating equity:', e);
     }
     
-    // setPlayers(updatedPlayers);
     setCalculationResult({ isExact, simulationCount });
   };
 
-  // Auto-run calculation when cards change
+  // Automatically recalculate equity when cards change
   useEffect(() => {
     handleRunCalculation();
   }, [players, communityCards]);
