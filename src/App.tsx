@@ -188,7 +188,7 @@ function App() {
     try {
       // Calculate equity for all players
       const updatedPlayers = calculateEquity(players, communityCards, simulationCount);
-      setPlayers(updatedPlayers);
+//      setPlayers(updatedPlayers);
     } catch (e) {
       console.error('Error calculating equity:', e);
     }
