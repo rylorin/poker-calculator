@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import CommunityCardSection from './components/CommunityCardSection';
 import PlayersSection from './components/PlayersSection';
 import GameControls from './components/GameControls';
 import ResultDisplay from './components/ResultDisplay';
 import { Card, GameVariant, Player } from './types';
-import { calculateEquity, isCardInUse } from './utils/cardUtils';
+import { calculateEquity } from './utils/cardUtils';
 
 function App() {
   // Game state management
@@ -35,6 +35,8 @@ function App() {
   }>({
     isExact: true
   });
+
+  // Timeout state is no longer needed
 
   /**
    * Collects all cards currently in use (player hands + community cards)
@@ -79,6 +81,9 @@ function App() {
         return { ...prev, river: card };
       }
     });
+    
+    // Trigger automatic equity calculation after community cards change
+    // No need to call debouncedCalculation here as useEffect will handle it
   };
 
   /**
@@ -98,6 +103,9 @@ function App() {
         return player;
       })
     );
+    
+    // Trigger automatic equity calculation after player hand changes
+    // No need to call debouncedCalculation here as useEffect will handle it
   };
 
   /**
@@ -176,7 +184,7 @@ function App() {
   /**
    * Calculates equity for all players based on current cards
    */
-  const handleRunCalculation = () => {
+  const handleRunCalculation = useCallback(async (isManualCalculation = false) => {
     // Determine if we can use exact calculation based on number of unknown cards
     const filledCards = getAllCardsInUse().length;
     const totalCards = 52;
@@ -187,19 +195,48 @@ function App() {
     
     try {
       // Calculate equity for all players
-      const updatedPlayers = calculateEquity(players, communityCards, simulationCount);
-//      setPlayers(updatedPlayers);
+      const updatedPlayers = await calculateEquity(players, communityCards, simulationCount);
+      
+      // Only update players if there are actual changes to prevent unnecessary re-renders
+      const hasChanges = updatedPlayers.some((updatedPlayer, index) => {
+        const currentPlayer = players[index];
+        return (
+          updatedPlayer.equity !== currentPlayer.equity ||
+          updatedPlayer.winPercentage !== currentPlayer.winPercentage ||
+          updatedPlayer.tiePercentage !== currentPlayer.tiePercentage
+        );
+      });
+      // console.log('handleRunCalculation',isManualCalculation,players, updatedPlayers,  hasChanges);
+
+      // Only update state if this is a manual calculation or if there are actual changes
+      // This prevents infinite loops from automatic calculations
+      if (isManualCalculation || hasChanges) {
+        setPlayers(updatedPlayers);
+      }
     } catch (e) {
       console.error('Error calculating equity:', e);
     }
     
-    setCalculationResult({ isExact, simulationCount });
-  };
-
-  // Automatically recalculate equity when cards change
-  useEffect(() => {
-    handleRunCalculation();
+    // Only update calculation result for manual calculations to prevent unnecessary re-renders
+    if (isManualCalculation) {
+      setCalculationResult({ isExact, simulationCount });
+    }
   }, [players, communityCards]);
+
+  // Smart automatic equity calculation that doesn't cause infinite loops
+  useEffect(() => {
+    // Only calculate if we have at least 2 players with complete hands
+    const playersWithCompleteHands = players.filter(p => 
+      p.hand.filter(card => card !== null).length >= 2
+    );
+    
+    if (playersWithCompleteHands.length >= 2) {
+      // Trigger automatic calculation without updating state to prevent loops
+      handleRunCalculation(false);
+    }
+  }, [players, communityCards, handleRunCalculation]);
+  
+  // No cleanup needed since we removed the timeout logic
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white">
@@ -212,7 +249,7 @@ function App() {
         <GameControls
           gameVariant={gameVariant}
           onChangeGameVariant={handleChangeGameVariant}
-          onRunCalculation={handleRunCalculation}
+          onRunCalculation={() => handleRunCalculation(true)}
         />
         
         <CommunityCardSection

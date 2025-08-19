@@ -1,6 +1,5 @@
 import { Card, Rank, Suit, Player } from '../types';
-import { TexasHoldem, } from 'poker-odds-calc';
-import type { IHand } from 'poker-odds-calc/dts/lib/Interfaces';
+import { PokerEquityCalculator, GameVariant } from 'poker-equity-calculator';
 
 // Define all possible card ranks from Ace to 2
 export const RANKS: Rank[] = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
@@ -85,7 +84,7 @@ export const isCardInUse = (
  * @param card Our internal Card object
  * @returns String representation of the card (e.g., "As" for Ace of spades)
  */
-const convertToPokerCalcCard = (card: Card): string => {
+const convertToPokerCalcCard = (card: Card|null): string => {
   const suitMap: Record<Suit, string> = {
     'spades': 's',
     'hearts': 'h',
@@ -93,7 +92,7 @@ const convertToPokerCalcCard = (card: Card): string => {
     'clubs': 'c'
   };
   
-  return `${card.rank}${suitMap[card.suit]}`;
+  return card ? `${card.rank}${suitMap[card.suit]}`:'..';
 };
 
 /**
@@ -103,34 +102,32 @@ const convertToPokerCalcCard = (card: Card): string => {
  * @param iterations Number of Monte Carlo simulations to run (default: 10000)
  * @returns Updated array of players with calculated equity percentages
  */
-export const calculateEquity = (
+export const calculateEquity = async (
   players: Player[],
   communityCards: { flop: (Card | null)[]; turn: Card | null; river: Card | null },
-  _iterations: number = 10000
-): Player[] => {
+  iterations?: number
+): Promise<Player[]> => {
   // Return default values if we don't have at least 2 players with cards
-  const playersWithCards = players.filter(p => p.hand.length >= 2);
-   if (playersWithCards.length < 2) {
+  const playersWithCards = players.filter(p => p.hand.filter(Boolean).length >= 2);
+  if (playersWithCards.length < 2) {
     return players.map(player => ({
       ...player,
       equity: 100/players.length,
       winPercentage: 0,
       tiePercentage: 0
     }));
-   }
+  }
 
   // Initialize the poker calculator for Texas Hold'em
-  const calculator = new TexasHoldem();
+  const calculator = new PokerEquityCalculator(GameVariant.TEXAS_HOLDEM);
   
-  // Add each player's hand to the calculator
-  players.forEach(player => {
-    if (player.hand.length > 0) {
-      const cards = player.hand
-        .filter((card): card is Card => card !== null)
-        .map(convertToPokerCalcCard);
-      if (cards.length === 2) {
-        calculator.addPlayer(cards as IHand);
-      }
+  // Add each player's hand to the calculator (only if both hole cards are present)
+  const playerIndexToResultIndex: number[] = [];
+  players.forEach((player, playerIndex) => {
+    const holeCards = player.hand.filter((card): card is Card => card !== null).map(convertToPokerCalcCard);
+    if (holeCards.length === 2) {
+      calculator.addHand(`${holeCards[0]}${holeCards[1]}`);
+      playerIndexToResultIndex.push(playerIndex);
     }
   });
   
@@ -142,20 +139,39 @@ export const calculateEquity = (
   ]
     .filter((card): card is Card => card !== null)
     .map(convertToPokerCalcCard);
-  
   if (board.length > 0) {
-    calculator.setBoard(board);
+    calculator.setBoard(board.join(''));
   }
   
-  // Calculate equity percentages
-  const results = calculator.calculate();
+  // Calculate equity
+  // Note: iterations is supported by the library; use it to control Monte Carlo runs
+  const options = typeof iterations === 'number' ? { iterations } : {};
+  const result = await calculator.calculateEquity(options as any);
   
-  // Update each player's equity values with the calculated results
-  return players.map((player, index) => {
-    const result = results.getPlayers()[index];
-    return { ...player,
-      equity: Number(result.getWinsPercentage().toFixed(2)),
-      winPercentage: Number(result.getWinsPercentage().toFixed(2)),
-      tiePercentage:  Number(result.getTiesPercentage().toFixed(2))};
+  const totalHands = result.totalHands || 0;
+  
+  // Build a map from added-hand order to corresponding player index
+  // playerIndexToResultIndex holds player indexes in the same order as hands were added
+  return players.map((player, playerIndex) => {
+    const addedOrderIndex = playerIndexToResultIndex.indexOf(playerIndex);
+    if (addedOrderIndex === -1) {
+      // Player not included in calculation (incomplete hand)
+      return {
+        ...player,
+        equity: 0,
+        winPercentage: 0,
+        tiePercentage: 0
+      };
+    }
+    const playerResult = result.playerResults[addedOrderIndex];
+    const equityPct = Number((playerResult.equity * 100).toFixed(2));
+    const winsPct = totalHands > 0 ? Number(((playerResult.wins / totalHands) * 100).toFixed(2)) : 0;
+    const tiesPct = totalHands > 0 ? Number(((playerResult.ties / totalHands) * 100).toFixed(2)) : 0;
+    return {
+      ...player,
+      equity: equityPct,
+      winPercentage: winsPct,
+      tiePercentage: tiesPct
+    };
   });
 };

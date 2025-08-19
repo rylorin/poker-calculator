@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card as CardType, Suit } from '../types';
+import { Card as CardType,  } from '../types';
 import { getCardColor, getSuitSymbol } from '../utils/cardUtils';
 
 interface CardProps {

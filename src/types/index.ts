@@ -1,5 +1,5 @@
 export type Suit = 'spades' | 'hearts' | 'clubs' | 'diamonds';
-export type Rank = 'A' | 'K' | 'Q' | 'J' | '10' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2';
+export type Rank = 'A' | 'K' | 'Q' | 'J' | 'T' | '9' | '8' | '7' | '6' | '5' | '4' | '3' | '2';
 export type Card = {
   rank: Rank;
   suit: Suit;
